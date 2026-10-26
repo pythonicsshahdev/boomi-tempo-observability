@@ -1,0 +1,44 @@
+# Transforms copied from vector_simplified/otel-collector-config.hbs (consumerId extraction).
+processors:
+  # Boomi spans carry no duration field, and send the processStep document
+  # counts/sizes as strings. Promote both to numbers so OpenSearch can
+  # aggregate them (latency percentiles, throughput sums).
+  transform/boomi_numeric:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(span.attributes["duration_ms"], (span.end_time_unix_nano - span.start_time_unix_nano) / 1000000.0)
+          - set(span.attributes["processStep.inboundDocumentCount"], Int(span.attributes["processStep.inboundDocumentCount"])) where span.attributes["processStep.inboundDocumentCount"] != nil
+          - set(span.attributes["processStep.outboundDocumentCount"], Int(span.attributes["processStep.outboundDocumentCount"])) where span.attributes["processStep.outboundDocumentCount"] != nil
+          - set(span.attributes["processStep.inboundDocumentSize"], Int(span.attributes["processStep.inboundDocumentSize"])) where span.attributes["processStep.inboundDocumentSize"] != nil
+          - set(span.attributes["processStep.outboundDocumentSize"], Int(span.attributes["processStep.outboundDocumentSize"])) where span.attributes["processStep.outboundDocumentSize"] != nil
+  # Boomi's instrumentation cannot attach custom HTTP headers to a span, so the
+  # USF processes pass business dimensions (consumerId, responseCode, ...) as
+  # ' | key=value | ' pairs inside Notify shape messages. Promote them to real
+  # span attributes so Grafana can group and filter on them.
+  # Caveat: values that themselves contain '|' (e.g. the cache key
+  # 'key=42|productprice|v1') cannot be extracted this way and are left alone.
+  transform/boomi_usf_fields:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        conditions:
+          - span.attributes["userEvent.message"] != nil
+        statements:
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*consumerId=[ ]*(?P<consumerId>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*subConsumerId=[ ]*(?P<subConsumerId>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*correlationId=[ ]*(?P<correlationId>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*transactionId=[ ]*(?P<transactionId>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*txn=[ ]*(?P<txn>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*responseCode=[ ]*(?P<responseCode>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*httpStatus=[ ]*(?P<httpStatus>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*endPoint=[ ]*(?P<endPoint>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*scenario=[ ]*(?P<scenario>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*divisionNbr=[ ]*(?P<divisionNbr>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          - merge_maps(span.attributes, ExtractPatterns(span.attributes["userEvent.message"], "[|][ ]*priced=[ ]*(?P<priced>[^|]*?)[ ]*(?:[|]|$)"), "upsert")
+          # 'priced' is a measure, not a dimension — make it summable.
+          - set(span.attributes["priced"], Int(span.attributes["priced"])) where span.attributes["priced"] != nil
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
