@@ -1,0 +1,62 @@
+name: boomi-tempo
+
+services:
+  collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otelcol/collector.yaml"]
+    volumes:
+      - ./config:/etc/otelcol:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "4319:4317"
+      - "4320:4318"
+    mem_limit: 256m
+    restart: always
+    depends_on: [tempo]
+
+  tempo:
+    image: grafana/tempo:2.9.0
+    user: root
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./config:/etc/tempo:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"
+    mem_limit: 512m
+    restart: always
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus-config/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./config:/etc/prometheus-config:ro
+      - ./targets:/etc/prometheus/targets:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    mem_limit: 256m
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/plugins:/var/lib/grafana/plugins:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    mem_limit: 384m
+    restart: always
+    depends_on: [tempo, prometheus]
+
+volumes:
+  tempo-data:
+  prometheus-data:
+  grafana-data:
