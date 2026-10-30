@@ -15,8 +15,18 @@ Runtime: `SHAH_MACOS_LOCAL_DOCKER_RUNTIME_03292026` (local Docker runtime). Obse
 
 **Control (fails on purpose): `--service nosuchservice` returns 0 panels with data and 0 errors.** A missing service shows no data, not zeros.
 
-## Still to do (needs a process run on the runtime)
+## After a process run (checked 2026-10-30, process `Employee XML to JSON Demo - Test`)
 
-- Tempo has no traces from the runtime yet, only the smoke test's. The Tempo panels (throughput, root span percentiles, executions per second, step boxplot) need a deployed process to run.
-- Record the `span.runtime.nodeId` values once traces arrive, and whether they match anything in Prometheus.
-- Check whether the Metrics and Logs sections of the Boomi Observability page override the global endpoint (they were collapsed in the screenshot).
+**Traces: confirmed on real Boomi data, after one fix.**
+- Tempo holds spans from the runtime (root span name `Submit process execution`, `service.name` = the runtime id as above). `span.process.name` values include `Employee XML to JSON Demo - Test` and `Employee XML to JSON Demo`.
+- **Finding: the spans carry `runtime.id` and `runtime.name`, but no `runtime.nodeId`.** (`runtime.id` = `8ad9cbe3-a691-434f-a105-e2619dab47df`, the Atom id.) The example dashboard filtered trace panels on `span.runtime.nodeId`, an attribute that exists only on its cluster runtime. In TraceQL a filter on a missing attribute matches nothing (a negative regex `!~` also returns 0), so every trace panel read zero: 8 root spans without the filter, 0 with it.
+- **Fix:** removed ` && span.runtime.nodeId =~ "${node:regex}"` from all 9 TraceQL queries. The `node` variable still filters the Prometheus panels. Cost: on a molecule the trace panels are not filtered by node, and a per-node trace filter would need an attribute that exists there (not verifiable here).
+- After Grafana reloaded the dashboard (restart needed; it did not pick up the edited file on its own): **20 of 24 panels return data, 0 query errors.** The panels still at zero are legitimately empty on an idle healthy runtime (runtime state flags are all false, queued/running executions, failed executions, failures per second).
+- Tempo's TraceQL metrics only accept a range of up to 3 hours here (`metrics query time range exceeds the maximum allowed duration of 3h0m0s`), so the dashboard's default `now-1h` works but a 6h or 24h range will error on the Tempo panels.
+
+**Control (fails on purpose): `--service nosuchservice` returns 0 panels with data and 0 errors.**
+
+## Still open
+
+- Whether the Metrics and Logs sections of the Boomi Observability page override the global endpoint (collapsed in the screenshot; not checked).
+- `jvm_id` and `span.runtime.nodeId` do not exist on a local Atom, so the shared node variable could not be checked against a molecule.

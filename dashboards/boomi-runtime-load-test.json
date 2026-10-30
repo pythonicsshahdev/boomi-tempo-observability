@@ -1088,7 +1088,7 @@
                       },
                       "spec": {
                         "metricsQueryType": "instant",
-                        "query": "{nestedSetParent < 0 && resource.service.name =~ \"${service:regex}\" && span.runtime.nodeId =~ \"${node:regex}\"} | count_over_time()",
+                        "query": "{nestedSetParent < 0 && resource.service.name =~ \"${service:regex}\"} | count_over_time()",
                         "queryType": "traceql"
                       }
                     },
@@ -1763,7 +1763,7 @@
                       },
                       "spec": {
                         "metricsQueryType": "instant",
-                        "query": "{nestedSetParent < 0 && resource.service.name =~ \"${service:regex}\" && span.runtime.nodeId =~ \"${node:regex}\"} | quantile_over_time(duration, .95)",
+                        "query": "{nestedSetParent < 0 && resource.service.name =~ \"${service:regex}\"} | quantile_over_time(duration, .95)",
                         "queryType": "traceql"
                       }
                     },
@@ -1831,7 +1831,7 @@
                       },
                       "spec": {
                         "metricsQueryType": "instant",
-                        "query": "{name = \"Execute process\" && span.execution.success = \"false\" && resource.service.name =~ \"${service:regex}\" && span.runtime.nodeId =~ \"${node:regex}\"} | count_over_time()",
+                        "query": "{name = \"Execute process\" && span.execution.success = \"false\" && resource.service.name =~ \"${service:regex}\"} | count_over_time()",
                         "queryType": "traceql"
                       }
                     },
@@ -1911,7 +1911,7 @@
                       },
                       "spec": {
                         "metricsQueryType": "range",
-                        "query": "{nestedSetParent < 0 && resource.service.name =~ \"${service:regex}\" && span.runtime.nodeId =~ \"${node:regex}\"} | rate() by (resource.service.name)",
+                        "query": "{nestedSetParent < 0 && resource.service.name =~ \"${service:regex}\"} | rate() by (resource.service.name)",
                         "queryType": "traceql"
                       }
                     },
@@ -1984,7 +1984,7 @@
                       },
                       "spec": {
                         "metricsQueryType": "range",
-                        "query": "{nestedSetParent < 0 && resource.service.name =~ \"${service:regex}\" && span.runtime.nodeId =~ \"${node:regex}\"} | quantile_over_time(duration, .5, .95, .99)",
+                        "query": "{nestedSetParent < 0 && resource.service.name =~ \"${service:regex}\"} | quantile_over_time(duration, .5, .95, .99)",
                         "queryType": "traceql"
                       }
                     },
@@ -2054,7 +2054,7 @@
                       },
                       "spec": {
                         "metricsQueryType": "range",
-                        "query": "{name = \"Execute process\" && resource.service.name =~ \"${service:regex}\" && span.runtime.nodeId =~ \"${node:regex}\"} | rate() by (span.process.name)",
+                        "query": "{name = \"Execute process\" && resource.service.name =~ \"${service:regex}\"} | rate() by (span.process.name)",
                         "queryType": "traceql"
                       }
                     },
@@ -2124,7 +2124,7 @@
                       },
                       "spec": {
                         "metricsQueryType": "range",
-                        "query": "{name = \"Execute process\" && span.execution.success = \"false\" && resource.service.name =~ \"${service:regex}\" && span.runtime.nodeId =~ \"${node:regex}\"} | rate()",
+                        "query": "{name = \"Execute process\" && span.execution.success = \"false\" && resource.service.name =~ \"${service:regex}\"} | rate()",
                         "queryType": "traceql"
                       }
                     },
@@ -2144,7 +2144,7 @@
                       },
                       "spec": {
                         "metricsQueryType": "range",
-                        "query": "{status = error && resource.service.name =~ \"${service:regex}\" && span.runtime.nodeId =~ \"${node:regex}\"} | rate()",
+                        "query": "{status = error && resource.service.name =~ \"${service:regex}\"} | rate()",
                         "queryType": "traceql"
                       }
                     },
@@ -2247,7 +2247,7 @@
                       },
                       "spec": {
                         "metricsQueryType": "instant",
-                        "query": "{span.processStep.id != nil && resource.service.name =~ \"${service:regex}\" && span.runtime.nodeId =~ \"${node:regex}\"} | quantile_over_time(duration, .05, .25, .5, .75, .95) by (span.process.id, span.processStep.id, span.processStep.userLabel, name)",
+                        "query": "{span.processStep.id != nil && resource.service.name =~ \"${service:regex}\"} | quantile_over_time(duration, .05, .25, .5, .75, .95) by (span.process.id, span.processStep.id, span.processStep.userLabel, name)",
                         "queryType": "traceql"
                       }
                     },
