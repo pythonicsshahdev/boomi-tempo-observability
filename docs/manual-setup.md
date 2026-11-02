@@ -1,6 +1,6 @@
 # Manual setup: Prometheus + Tempo + Grafana for Boomi runtime telemetry
 
-This is the step-by-step version of `scripts/install.sh`. Do it by hand if you want to see each piece, or if the script does not fit your machine. Every step ends with a check; do not continue until it passes.
+This is the step-by-step version of `scripts/install.sh`. Do it by hand if you want to see each piece, or if the script does not fit your machine. Every step ends with a check; do not continue until it passes. Several steps say "copy from the repo" (the long collector transforms, `tempo.yaml`, the dashboard JSON, `docker-compose.yml`, the Grafana provisioning files, and the scripts and tests used in steps 6 and 9), so clone this repo next to your working folder first and copy from it.
 
 What you get: Boomi sends OTLP to one OpenTelemetry Collector. Traces go to Tempo, metrics to Prometheus, and logs are accepted and discarded (this stack does not store logs; use the OpenSearch stack if you need Boomi logs in Grafana). Grafana shows the Boomi Runtime dashboard.
 
@@ -97,7 +97,7 @@ scrape_configs:
         refresh_interval: 5s
 ```
 
-`honor_labels: true` is what keeps the runtime's `service.name` as the `job` label. Check:
+`honor_labels: true` is what keeps the runtime's `service.name` as the `job` label. Check (a warning that `/etc/prometheus/targets/*.json` does not exist is normal: that folder only fills when a JMeter run writes a target file):
 
 ```bash
 docker run --rm --entrypoint promtool -v "$PWD/config":/c prom/prometheus check config /c/prometheus.yml
