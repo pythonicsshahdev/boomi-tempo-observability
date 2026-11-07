@@ -35,6 +35,8 @@ OUT=results/$(date +%Y%m%d-%H%M%S); mkdir -p "$OUT"
 declare_ids() { for s in $SVCS; do echo "$s $(sid $s)"; done; }
 restarts() { docker inspect -f '{{.RestartCount}}' "$1" 2>/dev/null || echo 0; }
 base_file=$OUT/base.txt
+vol_size() { docker run --rm -v "$1":/v busybox du -sk /v 2>/dev/null | cut -f1; }
+for v in $VOLS; do echo "$v $(vol_size "$v")"; done > "$OUT/vols-before.txt"
 declare_ids | while read -r s id; do echo "$s $id $(restarts "$id")"; done > "$base_file"
 
 ( while true; do
@@ -76,11 +78,11 @@ while read -r s id base; do
   printf '%-11s %9s %9s %9s %6s %6s %s\n' "$s" "${peak:-n/a}" "$limit" "$delta" "$oom" "$st" "$note" | tee -a "$OUT/summary.txt"
 done < "$base_file"
 
-echo "volumes:" | tee -a "$OUT/summary.txt"
-for v in $VOLS; do
-  kb=$(docker run --rm -v "$v":/v busybox du -sk /v 2>/dev/null | cut -f1)
-  echo "  $v: ${kb:-n/a} KiB" | tee -a "$OUT/summary.txt"
-done
+echo "volumes (KiB, before -> after, growth during this run):" | tee -a "$OUT/summary.txt"
+while read -r v kb0; do
+  kb1=$(vol_size "$v")
+  echo "  $v: ${kb0:-n/a} -> ${kb1:-n/a} (+$(( ${kb1:-0} - ${kb0:-0} )))" | tee -a "$OUT/summary.txt"
+done < "$OUT/vols-before.txt"
 echo "results in $OUT/"
 if [ -n "$failed" ]; then echo "GATE FAILED:$failed restarted, was OOM-killed or is not running" | tee -a "$OUT/summary.txt" >&2; exit 1; fi
 echo "gate passed: no restarts, no OOM kills"
