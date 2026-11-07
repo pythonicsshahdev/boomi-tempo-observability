@@ -55,4 +55,4 @@ Checked on Grafana **13.2.4** (pinned): the Grafana v2 dashboard schema loads fr
 
 ## Status
 
-Working: the stack, install and manual guide, the runtime dashboard on real Boomi data. Planned: a load test of the stack itself with memory and disk numbers, a load-to-trace correlation checker that reads from the separate [Boomi Load Testing Toolkit](https://github.com/pythonicsshahdev/BOOMI_Performance_Testing_POC), and ports of the other OpenSearch dashboards. Logs (Loki) would be an optional later extra.
+Working: the stack, install and manual guide, the runtime dashboard on real Boomi data. Planned: a load test of the stack itself with memory and disk numbers, a load-to-trace correlation checker that reads from the separate Boomi Load Testing Toolkit (a JMeter-based project, not part of this repo), and ports of the other OpenSearch dashboards. Logs (Loki) would be an optional later extra.
