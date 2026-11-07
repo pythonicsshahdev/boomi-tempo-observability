@@ -24,7 +24,7 @@ services:
       - tempo-data:/var/tempo
     ports:
       - "3200:3200"
-    mem_limit: 512m
+    mem_limit: 1g
     restart: always
 
   prometheus:
@@ -52,7 +52,7 @@ services:
       - grafana-data:/var/lib/grafana
     ports:
       - "3000:3000"
-    mem_limit: 384m
+    mem_limit: 512m
     restart: always
     depends_on: [tempo, prometheus]
 
