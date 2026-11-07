@@ -53,3 +53,23 @@ Same profile (71,895 traces). Tempo raised to 1g, Grafana to 512m (Task 12: tune
 Volumes after the three runs (cumulative): tempo-data 309,168 KiB, prometheus-data 15,988 KiB. The Tempo spike config keeps 1 hour of blocks.
 
 Open: Grafana peaked at 94% of its limit in this run, up from about 75% in earlier runs, with no dashboard load. It was recreated just before the run, so this may be warm-up, but it is the next container likely to fail. Watch it, and raise it to 768m if it repeats.
+
+## Comparison with the OpenSearch stack (same synthetic profiles, 2026-11-07)
+
+The OpenSearch stack (OpenSearch with a 512 MB heap, Vector, OTel Collector, Prometheus, Grafana) has no container memory limits. Same machine, same telemetrygen profiles; metrics go to Vector, traces to its collector. Volume growth is measured before and after each run (the OpenSearch volume already held about 1.9 GB of older data, so only growth is comparable).
+
+| profile | stack | gate | peak memory, sum of containers | disk growth |
+|---|---|---|---|---|
+| 500 spans/s, 300 s | Tempo (limits 256/512/256/384) | passed | about 783 MiB | about 56 MB (Tempo), under 1 MB (Prometheus) |
+| 500 spans/s, 300 s | OpenSearch | passed | about 1,401 MiB | 142.5 MB (OpenSearch), 0.2 MB (Prometheus) |
+| 1,000 spans/s, 300 s | Tempo, original limits | **failed** (Tempo restarted twice, 507/512 MiB) | n/a | about 145 MB |
+| 1,000 spans/s, 300 s | Tempo, tuned (Tempo 1g, Grafana 512m) | passed | about 1,117 MiB (Grafana alone 480) | about 107 MB |
+| 1,000 spans/s, 300 s | OpenSearch | passed | about 1,449 MiB | 285.7 MB (OpenSearch), 0.15 MB (Prometheus) |
+
+Per container, OpenSearch peaked at 926-970 MiB, Vector about 33, collector about 70, Prometheus about 39, Grafana about 333. The Tempo stack's collector, Prometheus and Grafana are comparable; the difference is Tempo (386-519 MiB) against OpenSearch plus Vector (about 960-1,000 MiB).
+
+What this says (synthetic load only; real Boomi load is probably lower and burstier):
+- At 500 spans/s the Tempo stack used about 55% of the OpenSearch stack's memory and about 40% of its disk growth. The "lighter" estimate holds.
+- At 1,000 spans/s OpenSearch was steady (about 970 MiB), while Tempo's memory scaled with the rate and ran out at 512 MB. Tempo needs a limit sized to the expected rate; OpenSearch's heap cap makes it less rate-sensitive.
+- Neither stack was driven to its breaking point on the OpenSearch side. Memory and disk for a real Boomi runtime profile (toolkit against a Boomi API) are still to be measured.
+- Tempo's disk figures depend on its retention (1 hour in the spike config) and compaction, so run-to-run deltas are noisy.
