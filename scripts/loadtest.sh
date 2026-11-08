@@ -18,7 +18,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 case $STACK in
-  tempo)      SVCS="collector tempo prometheus grafana"
+  tempo)      SVCS="collector tempo prometheus grafana otlp-http-shim"
               VOLS="boomi-tempo_tempo-data boomi-tempo_prometheus-data"
               sid() { docker-compose ps -q "$1"; } ;;
   opensearch) SVCS="opensearch vector otel-collector prometheus grafana"

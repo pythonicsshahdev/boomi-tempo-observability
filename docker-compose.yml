@@ -8,12 +8,23 @@ services:
       - ./config:/etc/otelcol:ro
     ports:
       - "4317:4317"
-      - "4318:4318"
       - "4319:4317"
-      - "4320:4318"
     mem_limit: 256m
     restart: always
     depends_on: [tempo]
+
+  # Publishes the OTLP/HTTP ports (4318, 4320) and repairs the Boomi API Gateway's JSON-as-protobuf
+  # requests before they reach the collector. See config/shim/otlp-http-shim.conf.
+  otlp-http-shim:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./config/shim:/etc/nginx/conf.d:ro
+    ports:
+      - "4318:4318"
+      - "4320:4320"
+    mem_limit: 64m
+    restart: always
+    depends_on: [collector]
 
   tempo:
     image: grafana/tempo:2.9.0

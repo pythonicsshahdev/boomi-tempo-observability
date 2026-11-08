@@ -1,12 +1,12 @@
 #!/bin/bash
 cd "$(dirname "$0")/.." || exit 1
 . tests/lib.sh
-SVCS="collector tempo prometheus grafana"
+SVCS="collector tempo prometheus grafana otlp-http-shim"
 assert_eq 0 "$(docker-compose config -q >/dev/null 2>&1; echo $?)" "docker-compose config is valid"
 CFG=$(docker-compose config --format json 2>/dev/null)
 for s in $SVCS; do
-  assert_eq 1 "$(echo "$CFG" | jq -r ".services.$s.mem_limit // empty" | grep -c .)" "$s has mem_limit"
-  assert_eq always "$(echo "$CFG" | jq -r ".services.$s.restart // empty")" "$s restart is always"
+  assert_eq 1 "$(echo "$CFG" | jq -r ".services[\"$s\"].mem_limit // empty" | grep -c .)" "$s has mem_limit"
+  assert_eq always "$(echo "$CFG" | jq -r ".services[\"$s\"].restart // empty")" "$s restart is always"
 done
 for i in $(seq 1 40); do
   curl -sf localhost:3200/ready >/dev/null && curl -sf localhost:${PROMETHEUS_PORT:-9090}/-/ready >/dev/null && curl -sf localhost:3000/api/health >/dev/null && break

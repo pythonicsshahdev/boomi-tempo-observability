@@ -72,6 +72,10 @@ Check:
 docker run --rm -v "$PWD/config":/c otel/opentelemetry-collector-contrib validate --config /c/collector.yaml && echo valid
 ```
 
+### 3b. The OTLP/HTTP shim (only needed for the Boomi API Gateway)
+
+The gateway posts OTLP/HTTP with a protobuf content type but a JSON body, and the collector rejects it with HTTP 400. Copy `config/shim/otlp-http-shim.conf` from the repo into `config/shim/`. The compose file (step 7) runs it as the `otlp-http-shim` service, which publishes 4318 and 4320 and rewrites the content type when the body starts with `{`. See `docs/gateway-otlp-content-type-bug.md`. A runtime that uses gRPC on 4317 or 4319 does not need it.
+
 ## 4. Tempo config (`config/tempo.yaml`)
 
 Pin Tempo 2.9.0; `latest` is v3 and this config has not been tried on it. Copy the config from `config/tempo.yaml` in the repo. The two parts that must be present are `metrics_generator.storage.path` and the `local-blocks` processor under `overrides`; without them the dashboard's TraceQL metric panels fail with `500 ... empty ring`.

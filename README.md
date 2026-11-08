@@ -25,7 +25,7 @@ The script checks prerequisites (it changes nothing if one is missing), download
 
 If something else already uses port 9090 (for example the Boomi Load Testing Toolkit's Prometheus), run `export PROMETHEUS_PORT=9091` first. Prefer to see every step? Follow [`docs/manual-setup.md`](docs/manual-setup.md).
 
-In AtomSphere (runtime > Manage > Observability), point the Global Endpoint at `http://host.docker.internal:4317` (a runtime in Docker on the same machine) and override Traces with port `4319`. The stack answers on 4317/4318 and 4319/4320.
+In AtomSphere (runtime > Manage > Observability), point the Global Endpoint at `http://host.docker.internal:4317` (a runtime in Docker on the same machine) and override Traces with port `4319`. The stack answers on 4317/4318 and 4319/4320. The HTTP ports (4318, 4320) go through a small nginx proxy that repairs a Boomi API Gateway bug (it sends JSON bodies labeled as protobuf); see [`docs/gateway-otlp-content-type-bug.md`](docs/gateway-otlp-content-type-bug.md). To get the gateway's telemetry, point its OpenTelemetry settings at `http://host.docker.internal:4318` (traces `:4320`).
 
 ## What you see
 
