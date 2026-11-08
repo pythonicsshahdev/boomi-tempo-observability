@@ -1,0 +1,38 @@
+# Boomi Load Testing Toolkit profile for the TempoObs Load Target listener.
+# Run from the toolkit folder:   ./ramp.sh /path/to/boomi-runtime-observability/profiles/tempo-load-target.yaml
+# Path: toolkit JMeter container -> Boomi API Gateway (host port 8078) -> TempoObs Load Target API on the Atom.
+# One transaction = one GET = one process execution on the Atom (5 spans: start, set properties, message, notify, return).
+# The API key comes from the toolkit's .env, as TEMPO_LOAD_API_KEY (the variable name must be capitals, digits and underscores).
+test_plan: rest/ramp.jmx
+step_duration_sec: 40
+warmup_sec: 8
+think_time_ms: 200
+stop_rule:
+  max_error_rate_pct: 5
+  max_avg_response_ms: 3000
+target:
+  protocol: http
+  host: host.docker.internal   # this machine as seen from inside the container (never localhost)
+  port: 8078                   # the Boomi API Gateway container
+  auth: api_key
+  api_key_env: TEMPO_LOAD_API_KEY
+requests:
+  - name: Ping
+    method: GET
+    path: /ws/rest/tempoobs/loadtarget/ping
+steps:
+  - instances: 1
+    threads: 3
+    tps: 5
+  - instances: 1
+    threads: 5
+    tps: 10
+  - instances: 1
+    threads: 9
+    tps: 20
+  - instances: 1
+    threads: 18
+    tps: 40
+  - instances: 1
+    threads: 5
+    tps: 10
