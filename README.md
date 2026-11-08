@@ -11,7 +11,7 @@ It is the lighter sibling of the OpenSearch-based stack ([`otel-fanout-quickstar
 | Logs | accepted and **discarded** (not stored in v1) | stored and searchable |
 | Fan-out to Splunk, Datadog, etc. | no | yes |
 
-You switch between the two by stopping one and starting the other. They use the same OTLP ports, so your Boomi settings do not change. Anything Boomi sends while neither is up is lost.
+You switch between the two with `scripts/switch-stack.sh tempo|opensearch|status` (see Switching below). They use the same OTLP ports, so your Boomi settings do not change. Anything Boomi sends while neither is up is lost.
 
 ## Quick start
 
@@ -26,6 +26,16 @@ The script checks prerequisites (it changes nothing if one is missing), download
 If something else already uses port 9090 (for example the Boomi Load Testing Toolkit's Prometheus), run `export PROMETHEUS_PORT=9091` first. Prefer to see every step? Follow [`docs/manual-setup.md`](docs/manual-setup.md).
 
 In AtomSphere (runtime > Manage > Observability), point the Global Endpoint at `http://host.docker.internal:4317` (a runtime in Docker on the same machine) and override Traces with port `4319`. The stack answers on 4317/4318 and 4319/4320. The HTTP ports (4318, 4320) go through a small nginx proxy that repairs a Boomi API Gateway bug (it sends JSON bodies labeled as protobuf); see [`docs/gateway-otlp-content-type-bug.md`](docs/gateway-otlp-content-type-bug.md). To get the gateway's telemetry, point its OpenTelemetry settings at `http://host.docker.internal:4318` (traces `:4320`).
+
+## Switching between this stack and the OpenSearch stack
+
+```bash
+scripts/switch-stack.sh status        # prints: tempo | opensearch | none | both
+scripts/switch-stack.sh tempo         # stops the OpenSearch stack, starts this one, waits until healthy
+scripts/switch-stack.sh opensearch    # stops this stack, starts the OpenSearch stack, waits until healthy
+```
+
+Containers and data volumes are kept either way, so nothing is lost; telemetry Boomi sends while neither stack is up is. The script refuses (changing nothing) if the OpenSearch folder is missing. It looks for it in `~/Documents/OTEL/vector_simplified`; set `OPENSEARCH_STACK_DIR` if yours is elsewhere. This stack's Prometheus is published on `PROMETHEUS_PORT` (default 9091 in the script, since 9090 is often taken by the Boomi Load Testing Toolkit). Optional shell aliases: `alias tempo-stack='~/path/to/boomi-tempo-observability/scripts/switch-stack.sh tempo'` and the same for `opensearch`.
 
 ## What you see
 
