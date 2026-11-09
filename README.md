@@ -49,6 +49,15 @@ Known limits, from running it against a real runtime (details in [`docs/acceptan
 - Tempo metrics queries accept at most a 3-hour range here; the dashboard's default is 1 hour.
 - Boomi's span status is always Ok, so traces cannot show failures by status.
 
+## Checking a toolkit run against the traces
+
+```bash
+python3 -m blt check --run-id <toolkit run id> --route /ws/rest/<api>/<path> \
+    --jtl-dir <toolkit folder>/test-plans/results
+```
+
+Compares the number of requests JMeter sent with the number of traces on that route in the run's window, on whichever stack is running (detected), and prints `match`, `mismatch` or `uncorrelated` (exit code 0, 1, 2). Design and evidence: [`docs/stage3-checker-design.md`](docs/stage3-checker-design.md). Python tests: `python3 -m pytest`.
+
 ## Tests
 
 ```bash

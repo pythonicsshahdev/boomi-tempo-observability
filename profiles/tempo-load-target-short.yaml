@@ -1,0 +1,27 @@
+# Short version of tempo-load-target.yaml for a quick end-to-end check of `blt check` (about 1.5 minutes,
+# roughly 450 requests, well below the Atom's limit of about 27 TPS).
+# Run from the toolkit folder:   ./ramp.sh /path/to/boomi-runtime-observability/profiles/tempo-load-target-short.yaml
+test_plan: rest/ramp.jmx
+step_duration_sec: 25
+warmup_sec: 5
+think_time_ms: 200
+stop_rule:
+  max_error_rate_pct: 5
+  max_avg_response_ms: 3000
+target:
+  protocol: http
+  host: host.docker.internal
+  port: 8078
+  auth: api_key
+  api_key_env: TEMPO_LOAD_API_KEY
+requests:
+  - name: Ping
+    method: GET
+    path: /ws/rest/tempoobs/loadtarget/ping
+steps:
+  - instances: 1
+    threads: 3
+    tps: 5
+  - instances: 1
+    threads: 5
+    tps: 10
