@@ -92,3 +92,24 @@ def test_detect_override_wins_without_probing():
     def boom():
         raise AssertionError("must not probe")
     assert detect.detect_backend(boom, boom, override="opensearch") == "opensearch"
+
+
+def test_tempo_prefix_query_is_an_escaped_regex():
+    seen = {}
+    b = tempo.TempoBackend("http://t:3200", lambda u, params=None: seen.update(p=params) or {"traces": []})
+    b.count_route_prefix_traces("/ws/rest/proxy/v1/customers", 1, 2)
+    assert 'span.http.route =~ "/ws/rest/proxy/v1/customers.*"' in seen["p"]["q"]
+    b.count_route_prefix_traces("/a.b", 1, 2)
+    assert 'span.http.route =~ "/a\\\\.b.*"' in seen["p"]["q"]      # the dot is escaped for the regex
+
+
+def test_opensearch_prefix_uses_a_prefix_filter_on_the_keyword_field():
+    seen = {}
+
+    def post_json(url, body):
+        seen["body"] = body
+        return {"aggregations": {"n": {"value": 137}}}
+
+    b = opensearch.OpenSearchBackend("http://o:9200", post_json)
+    assert b.count_route_prefix_traces("/ws/rest/proxy/v1/customers", 1000.0, 2000.0) == 137
+    assert {"prefix": {"attributes.http.route.keyword": "/ws/rest/proxy/v1/customers"}} in seen["body"]["query"]["bool"]["filter"]

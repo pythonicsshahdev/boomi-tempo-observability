@@ -8,6 +8,10 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 
 
+SCRAPE_STEP_S = 5          # the toolkit's Prometheus scrape interval
+SCAN_BACK_S = 6 * 3600     # runs longer than this are not supported
+
+
 class RunNotFound(Exception):
     pass
 
@@ -46,11 +50,17 @@ def fetch_run_stats(prom, run_id, get_json, lookback_days=7, now=None):
         step = r["metric"].get("step_id")
         if step and step not in steps:
             steps.append(step)
-    count = "count(%s)" % sel
-    coarse = _extent(get_json, prom, count, now - lookback_days * 86400, now, 60)
-    if coarse is None:
+    # Anchor on the last sample, then scan the 6 h before it at the 5 s scrape interval. (A coarse scan over
+    # days can step right over a 30 s series.)
+    last = get_json(prom + "/api/v1/query", {
+        "query": "max(timestamp(last_over_time(%s[%dd])))" % (sel, lookback_days), "time": int(now)})["data"]["result"]
+    if not last:
         raise RunNotFound("run %s has counters but no samples inside the last %d days" % (run_id, lookback_days))
-    fine = _extent(get_json, prom, count, coarse[0] - 60, coarse[1] + 60, 15) or coarse
+    anchor = float(last[0]["value"][1])
+    extent = _extent(get_json, prom, "count(%s)" % sel, anchor - SCAN_BACK_S, anchor + SCRAPE_STEP_S, SCRAPE_STEP_S)
+    if extent is None:
+        raise RunNotFound("run %s has counters but no samples in the 6 hours before its last sample" % run_id)
+    fine = extent
     return RunStats(run_id=run_id, total=sum(by_code.values()), by_code=by_code,
                     start=fine[0], end=fine[1], steps=sorted(steps), approximate=True)
 

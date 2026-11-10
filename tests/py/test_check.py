@@ -14,6 +14,10 @@ class FakeBackend:
         self.calls.append(("route", route, start, end, method))
         return self.spans
 
+    def count_route_prefix_traces(self, prefix, start, end):
+        self.calls.append(("prefix", prefix, start, end))
+        return self.spans
+
     def count_process_traces(self, process, start, end):
         self.calls.append(("process", process, start, end))
         return self.spans
@@ -72,11 +76,19 @@ def test_process_mode_uses_process_count():
     assert b.calls[0][0] == "process" and r.status == "match"
 
 
-def test_exactly_one_of_route_or_process():
+def test_route_prefix_mode_counts_by_prefix():
+    b = FakeBackend(2000)
+    r = check.check_run(stats(2000), b, route_prefix="/ws/rest/proxy", **NOSLEEP)
+    assert b.calls[0][:2] == ("prefix", "/ws/rest/proxy") and r.status == "match" and r.route_prefix == "/ws/rest/proxy"
+
+
+def test_exactly_one_of_route_prefix_or_process():
     with pytest.raises(ValueError):
         check.check_run(stats(), FakeBackend(1), **NOSLEEP)
     with pytest.raises(ValueError):
         check.check_run(stats(), FakeBackend(1), route="/x", process="p", **NOSLEEP)
+    with pytest.raises(ValueError):
+        check.check_run(stats(), FakeBackend(1), route="/x", route_prefix="/y", **NOSLEEP)
 
 
 def test_failed_requests_are_reported():
@@ -84,9 +96,17 @@ def test_failed_requests_are_reported():
     assert check.check_run(s, FakeBackend(100), route="/x", **NOSLEEP).failed == 10
 
 
-def test_approximate_counts_get_a_wider_tolerance_and_say_so():
-    exact = RunStats(run_id="R", total=2000, by_code={"200": 2000}, start=800.0, end=1000.0, steps=[])
-    approx = RunStats(run_id="R", total=2000, by_code={"200": 2000}, start=800.0, end=1000.0, steps=[], approximate=True)
+def test_approximate_counts_allow_for_the_scrape_lag_and_say_so():
+    # 2 steps over a 200 s window = 10 requests/s on average; each step can miss up to 5 s of requests: 2*5*10 = 100
+    exact = RunStats(run_id="R", total=2000, by_code={"200": 2000}, start=800.0, end=1000.0, steps=["a", "b"])
+    approx = RunStats(run_id="R", total=2000, by_code={"200": 2000}, start=800.0, end=1000.0, steps=["a", "b"], approximate=True)
     assert check.check_run(exact, FakeBackend(2100), route="/x", **NOSLEEP).status == "mismatch"      # 5% off
     r = check.check_run(approx, FakeBackend(2100), route="/x", **NOSLEEP)
-    assert r.status == "match" and any("Prometheus" in n for n in r.notes)
+    assert r.status == "match" and any("Prometheus" in n and "100" in n for n in r.notes)
+    assert check.check_run(approx, FakeBackend(2150), route="/x", **NOSLEEP).status == "mismatch"      # beyond the lag
+
+
+def test_short_single_step_run_is_not_judged_by_a_flat_percentage():
+    # the real run: Prometheus read 117 of 137 requests over a 30 s step; the traces were 128
+    approx = RunStats(run_id="R", total=117, by_code={"200": 117}, start=100.0, end=130.0, steps=["step-01"], approximate=True)
+    assert check.check_run(approx, FakeBackend(128), route="/x", **NOSLEEP).status == "match"

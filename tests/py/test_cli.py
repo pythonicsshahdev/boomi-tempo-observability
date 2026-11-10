@@ -10,6 +10,7 @@ class B:
 
     def __init__(self, n): self.n = n
     def count_route_traces(self, *a, **k): return self.n
+    def count_route_prefix_traces(self, *a, **k): return self.n
     def count_process_traces(self, *a, **k): return self.n
 
 
@@ -58,7 +59,12 @@ def test_backend_detection_failure_exits_2():
 
 def test_route_or_process_is_required():
     code, text = run(["check", "--run-id", "R"])
-    assert code == 2 and "--route" in text
+    assert code == 2 and "--route" in text and "--route-prefix" in text
+
+
+def test_route_prefix_is_accepted_and_exclusive():
+    assert run(["check", "--run-id", "R", "--route-prefix", "/x"], spans=100)[0] == 0
+    assert run(["check", "--run-id", "R", "--route", "/x", "--route-prefix", "/y"])[0] == 2
 
 
 def test_jtl_dir_is_used_when_given_and_prometheus_is_not_touched():

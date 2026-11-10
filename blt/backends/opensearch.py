@@ -21,6 +21,9 @@ class OpenSearchBackend:
             filters.append({"term": {"attributes.http.request.method.keyword": method}})
         return self._count(filters, start, end)
 
+    def count_route_prefix_traces(self, prefix, start, end):
+        return self._count([{"prefix": {"attributes.http.route.keyword": prefix}}], start, end)
+
     def count_process_traces(self, process, start, end):
         return self._count([{"match_phrase": {"name": "Execute process"}},
                             {"match_phrase": {"attributes.process.name": process}}], start, end)

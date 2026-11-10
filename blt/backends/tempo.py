@@ -1,3 +1,5 @@
+import re
+
 from blt.backends.base import TruncatedResult
 
 
@@ -27,6 +29,10 @@ class TempoBackend:
         if method:
             q += ' && span.http.request.method = "%s"' % _q(method)
         return self._count(q + " }", start, end)
+
+    def count_route_prefix_traces(self, prefix, start, end):
+        # TraceQL regexes are fully anchored, so "<prefix>.*" means: starts with prefix
+        return self._count('{ span.http.route =~ "%s.*" }' % _q(re.sub(r"([.+*?()|\[\]{}^$])", r"\\\1", prefix)), start, end)
 
     def count_process_traces(self, process, start, end):
         return self._count('{ name = "Execute process" && span.process.name = "%s" }' % _q(process), start, end)

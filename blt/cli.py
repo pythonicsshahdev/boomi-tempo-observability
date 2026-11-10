@@ -29,6 +29,8 @@ def build_parser():
     c = sub.add_parser("check", help="compare JMeter's request count with the number of traces on the route for a run")
     c.add_argument("--run-id", required=True, help="the toolkit's run_id, e.g. 20261107-193845")
     c.add_argument("--route", help="http.route of the traced hop, e.g. /ws/rest/tempoobs/loadtarget/ping")
+    c.add_argument("--route-prefix", help="count every route that starts with this (for runs that hit several paths, "
+                                          "e.g. /ws/rest/proxy/v1/customers and /ws/rest/proxy/v1/customers/<id>)")
     c.add_argument("--process", help="alternatively count Execute process spans of this process name")
     c.add_argument("--method", help="also require this HTTP method (route mode)")
     c.add_argument("--jtl-dir", default=os.environ.get("BLT_JTL_DIR"),
@@ -52,8 +54,8 @@ def _fmt(ts):
 def main(argv=None, *, fetch=toolkit.fetch_run_stats, fetch_jtl=toolkit.fetch_run_stats_from_jtl, build_backend=default_build_backend,
          out=print, sleep=time.sleep, now=time.time):
     args = build_parser().parse_args(argv)
-    if bool(args.route) == bool(args.process):
-        out("error: pass exactly one of --route or --process")
+    if [args.route, args.route_prefix, args.process].count(None) != 2:
+        out("error: pass exactly one of --route, --route-prefix or --process")
         return 2
     try:
         if args.jtl_dir:
@@ -61,7 +63,7 @@ def main(argv=None, *, fetch=toolkit.fetch_run_stats, fetch_jtl=toolkit.fetch_ru
         else:
             stats = fetch(args.prometheus.rstrip("/"), args.run_id, http.get_json)
         backend = build_backend(args.backend, args)
-        result = check_mod.check_run(stats, backend, route=args.route, process=args.process, method=args.method,
+        result = check_mod.check_run(stats, backend, route=args.route, route_prefix=args.route_prefix, process=args.process, method=args.method,
                                      pad_s=args.pad_seconds, tolerance_pct=args.tolerance_pct,
                                      wait=not args.no_wait, sleep=sleep, now=now)
     except (toolkit.RunNotFound, detect.BackendDetectionError, base.TruncatedResult) as e:
@@ -74,8 +76,10 @@ def main(argv=None, *, fetch=toolkit.fetch_run_stats, fetch_jtl=toolkit.fetch_ru
         out(json.dumps(dataclasses.asdict(result)))
     else:
         out("run %s: JMeter sent %d requests (%d failed)" % (result.run_id, result.jmeter, result.failed))
+        label = ("route " + result.route) if result.route else (
+            ("routes starting with " + result.route_prefix) if result.route_prefix else ("process " + result.process))
         out("%s: %d traces in %s between %s and %s" % (
-            ("route " + result.route) if result.route else ("process " + result.process),
+            label,
             result.traces, result.backend, _fmt(result.window_start), _fmt(result.window_end)))
         out("result: %s (difference %+d)" % (result.status, result.delta))
         for n in result.notes:

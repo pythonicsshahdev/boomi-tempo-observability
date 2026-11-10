@@ -89,3 +89,17 @@ def test_jtl_missing_run_raises(tmp_path):
 def test_prometheus_stats_are_marked_approximate():
     g = fake_get([("last_over_time", vec(({"step_id": "s", "code": "200"}, 5))), ("count(", matrix([100]))])
     assert toolkit.fetch_run_stats("http://p:9090", "RID", g, now=1_000_000).approximate is True
+
+
+def test_window_scan_is_anchored_on_the_last_sample_and_uses_the_scrape_interval():
+    """A coarse scan over days can step right over a 30 s series: scan 6 h back from the last sample at 5 s."""
+    g = fake_get([
+        ("timestamp(", vec(({}, 1000))),
+        ("last_over_time", vec(({"step_id": "s", "code": "200"}, 5))),
+        ("count(", matrix([990, 995, 1000])),
+    ])
+    s = toolkit.fetch_run_stats("http://p:9090", "RID", g, now=1_000_000)
+    rng = [p for u, p in g.calls if u.endswith("/api/v1/query_range")]
+    assert rng and all(p["step"] == 5 for p in rng)
+    assert rng[0]["start"] == 1000 - 6 * 3600 and rng[0]["end"] == 1005
+    assert (s.start, s.end) == (990, 1000)
